@@ -16,8 +16,6 @@ router.get("/user/list", UserController.getUser);
 
 // 登录校验
 router.post("/login",UserController.login);
-// 注销
-router.get("/logout",UserController.logout);
 
 
 module.exports = router;

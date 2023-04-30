@@ -2,7 +2,7 @@
 <html>
     <head>
         <title><%= title %></title>
-        <link rel="stylesheet" href="/stylesheets/style.css" />
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     </head>
     <body>
         <h1>mongodb crud <button id="logout">注销</button></h1>
@@ -35,39 +35,56 @@
             var userList = document.querySelector("#userList");
             var logout = document.querySelector("#logout");
 
+            // 拦截器
+            axios.interceptors.request.use(
+                function (config) {
+                    console.log("config.headers",config.headers);
+                    const token = localStorage.getItem("token");
+                    // Authorization : Bearer token 这个是http规范里面的要求
+                    config.headers.Authorization = `Bearer ${token}`;
+                    return config;
+                },
+                function (error) {
+                    return Promise.reject(error);
+                }
+            );
+
+            // 响应后存储token
+            axios.interceptors.response.use(
+                function (response) {
+                    console.log(response);
+                    const {authorization} = response.headers;
+                    authorization && localStorage.setItem("token", authorization);
+                    return response;
+                },
+                function (error) {
+                    if (error.response.status === 401) {
+                        localStorage.removeItem("token");
+                        location.href="/login";
+                    }
+                    return Promise.reject(error);
+                }
+            );
+
             // 注册 添加add
             register.onclick = () => {
-                console.log(username.value);
-                fetch("/api/user/add", {
-                    method: "POST",
-                    body: JSON.stringify({
+                axios
+                    .post("/api/user/add", {
                         username: username.value,
                         password: password.value,
                         age: age.value,
-                    }),
-                    headers: {
-                        "Content-type": "application/json",
-                    },
-                })
-                    .then((res) => res.json())
+                    })
                     .then((res) => {
                         console.log(res);
-                        if (res.ok === 0) {
-                            location.href = "/login";
-                        }
+                        alert("用户增加操作成功")
                     });
             };
 
             // 获取userList
-            fetch("/api/user/list")
-                .then((res) => res.json())
-                .then((res) => {
-                    console.log(res);
-                    if (res.ok === 0) {
-                        location.href = "/login";
-                    }
-                    render(res);
-                });
+            axios.get("/api/user/list").then((res) => {
+                console.log(res);
+                render(res.data);
+            });
 
             // TODO: 对获取的数据进行渲染
             function render(data) {
@@ -80,16 +97,10 @@
             }
 
             // logout注销
-            logout.onclick=()=>{
-                fetch("/api/logout")
-                    .then((res) => res.json())
-                    .then((res) => {
-                        console.log(res);
-                        if (res.ok === 1) {
-                            location.href = "/login";
-                        }
-                    });
-            }
+            logout.onclick = () => {
+                localStorage.removeItem("token");
+                location.href="/login";
+            };
         </script>
     </body>
 </html>

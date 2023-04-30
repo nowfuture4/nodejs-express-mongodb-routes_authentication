@@ -3,14 +3,11 @@ var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
-// 生成session
-var session = require("express-session");
-// 将sessionId存入mongodb中
-var MongoStore = require("connect-mongo");
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
 var loginRouter = require("./routes/login");
+const JWT = require("./util/JWT");
 
 var app = express();
 
@@ -24,40 +21,32 @@ app.use(express.urlencoded({extended: false}));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-// TODO:注册session中间件，创建session
-app.use(
-    session({
-        name: "backstage",
-        secret: "xxxx",
-        cookie: {
-            maxAge: 1000 * 60 * 60,
-            secure: false,
-        },
-        resave: true,
-        saveUninitialized: true,
-        // TODO:创建数据库存储session
-        store:MongoStore.create({
-            mongoUrl:"mongodb://127.0.0.1:27017/backstage_session",
-            ttl: 1000 * 60 * 60, //过期时间
-        })
-    })
-);
-// TODO:设置中间件，session过期校验
+// TODO:设置中间件，token过期校验
 app.use((req, res, next) => {
     // TODO:排除login相关的接口和路由，放行login
-    if (req.url.includes("login")) {   
+    if (req.url.includes("login")) {
         next();
         return;
     }
-    if (req.session.user) {
-        // TODO:重新设置session
-        req.session.mydate=Date.now();
-        next();
+    // console.log("req.headers", req.headers);
+    const token = req.headers["authorization"]?.split(" ")[1];
+    console.log("tokenX", typeof(token));
+    // 如果token为undefined直接走else next();如果token为字符串"null"(前端request请求携带的字符串`Bearer ${token}`)，那么就会走if判断，合格就放行，不合格就给前端报错;
+    if (token) {
+        const payload = JWT.verify(token);
+        if (payload) {
+            // TODO:重新计算token过期时间
+            const newToken = JWT.generate(
+                {_id: payload.id, username: payload.username},
+                "1h"
+            );
+            res.header("Authorization", newToken);
+            next();
+        } else {
+            res.status(401).send({errCode: -1, errInfo: "token过期"});
+        }
     } else {
-        // TODO:是接口就返回错误码，不是接口就重定向
-        req.url.includes("api")
-            ? res.status(401).send({ok: 0})
-            : res.redirect("/login");
+        next();
     }
 });
 

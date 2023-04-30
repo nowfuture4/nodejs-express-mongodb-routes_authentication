@@ -1,4 +1,5 @@
 const UserService = require("../services/UserService");
+const JWT = require("../util/JWT.js");
 const UserController = {
     // add user用户
     addUser: async (req, res) => {
@@ -19,19 +20,14 @@ const UserController = {
         if (data.length === 0) {
             res.send({ok: 0});
         } else {
-            // 登录成功 设置session
-            req.session.user = data[0];
+            // 登录成功 设置token
+            console.log("login", data[0]);
+            const token =JWT.generate({_id:data[0]._id,username:data[0].username}, "1h");
+            // token 返回在header中
+            res.header("Authorization", token);
             res.send({ok: 1});
         }
     },
-    // 注销
-    logout: (req, res) => {
-        // 注销成功 删除session
-        console.log("session", req.session);
 
-        req.session.destroy(() => {
-            res.send({ok: 1});
-        });
-    },
 };
 module.exports = UserController;
