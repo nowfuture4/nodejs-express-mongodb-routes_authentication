@@ -14,16 +14,17 @@ const UserService = {
     },
     // getUser 查询userList
     getUser: (page, limit) => {
-        return UserModel.find({}, ["username", "password","age"])
+        return UserModel.find({}, ["username", "password", "age"])
             .sort({age: 1})
             .skip((page - 1) * limit)
             .limit(limit);
     },
+    // 7. 在services/UseService.js中增加登录查询方法
+
     // login 查询用户
     login: (username, password) => {
         return UserModel.find({username, password});
     },
-    
 };
 
 module.exports = UserService;
